@@ -1,0 +1,64 @@
+#!/usr/local/var/rbenv/shims/ruby
+
+require 'thor'
+require 'json'
+require 'eat'
+require 'progress_bar'
+require 'awesome_print'
+
+system 'clear'
+
+class MyCLI < Thor
+  
+  desc "search <SEARCH STRING>", "Search github for projects named <SEARCH STRING>"
+  def search(search_string)
+    url = build_url(search_string)
+    begin
+      api_output = eat(url)
+    rescue
+      puts "Oops, something went wrong."
+      exit
+    end
+
+    json = JSON.parse(api_output)
+    i = 0
+
+    if(json["total_count"] > 0)
+      h = {}
+      json['items'].collect{ |x| h[i+=1]=x}
+      
+      h.keys.each do |key|
+        puts key.to_s + ": " + h[key]['full_name'] + ' (' + h[key]['stargazers_count'].to_s + ')'
+      end
+    else
+      puts "No records Found."
+    end
+
+    return h
+  end
+
+  desc "install <SEARCH STRING>", "Will perform a search for specified term. Will present a list for cloning."
+  def install(search_string)
+    items = search(search_string)
+    print "Enter choice (0) : "
+    choice = STDIN.gets.chomp.to_i
+    exit if choice == 0
+
+    ap items[choice]
+  end
+
+
+
+  private
+  def build_url(q)
+    base_url    = "https://api.github.com/search/repositories?q="
+    q_options   = " in:name"
+    sort_order  = "&sort=stars"
+    asc_desc    = "&order=desc"
+
+    url = base_url + q + q_options + sort_order + asc_desc
+  end
+
+end
+
+MyCLI.start()
